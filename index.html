@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Critical Render Path</title>
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/black.css" id="theme">
+
+		<!-- Theme used for syntax highlighted code -->
+		<link rel="stylesheet" href="plugin/highlight/monokai.css" id="highlight-theme">
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-transition="slide" data-background="#457b9d" data-background-transition="zoom">
+					<h1>Critical Render Path</h1>
+					<p><a href="https://github.com/efandor" target="_blank">Pavel Litvinov</a></p>
+					<aside class="notes">
+						Браузеру предстоит пройти много шагов, прежде чем HTML-ответ от сервера будет преобразован в пиксели на экране. 
+						Последовательность этих шагов, необходимая для первого отображения страницы, называется «Критический путь рендеринга» (ориг. Critical Rendering Path).
+					</aside>
+				</section>
+
+				<section data-transition="slide" data-background="#1d3557" data-background-transition="zoom">
+					<section id="fragments">
+						<h4>Этапы CRP:</h4>
+						<ul>
+							<li class="fragment fade-right">
+								Построение DOM-дерева
+							</li>
+							<li class="fragment fade-right">
+								Построение CSSOM-дерева
+							</li>
+							<li class="fragment fade-right">
+								Запуск скриптов
+							</li>
+							<li class="fragment fade-right">
+								Создание Render tree
+							</li>
+							<li class="fragment fade-right">
+								Компоновка объектов (viewport → layout)
+							</li>
+							<li class="fragment fade-right">
+								Отрисовка (paint)
+							</li>
+						</ul>
+
+						<aside class="notes">
+							Знание о CRP (Critical Rendering Path) невероятно полезно для понимания того, 
+							как улучшить производительность web-приложений.
+						</aside>
+					</section>
+				</section>
+			
+				<section data-transition="slide" data-background="#457b9d" data-background-transition="zoom">
+					<h6>Построение DOM-дерева</h6>
+					<img src="./images/dom1.png" style="width: 864px; height: 535px; border-radius: 5px;" />
+
+					<aside class="notes">
+						Мы получаем строку или поток данных. На этом этапе браузер парсит и превращает полученную строку в объект:
+						Это только каркас. Сейчас браузер ничего не знает про стили и про то, каким образом всё это рендерить.
+					</aside>
+				</section>
+				
+				<section data-transition="slide" data-background="#1d3557" data-background-transition="zoom">
+					<h6>Построение CSSOM-дерева</h6>
+					<img src="./images/cssom1.png" style="width: 864px; height: 535px; border-radius: 5px;" />
+
+					<aside class="notes">
+						На данном этапе браузер берет DOM и CSS, собирает соответствия, 
+						и на выходе мы получаем объектную модель для CSS. Левая часть (head) для CSSOM практически не интересна, 
+						она не отображается пользователю. А для остальных узлов мы определили стили, которые браузеру нужно применить.
+						CSSOM важен, так как его понимание позволяет браузеру сформировать RenderTree.					
+					</aside>
+				</section>
+
+				<section data-transition="slide" data-background="#1d3557" data-background-transition="zoom">
+					<h6>Загрузка блокирующих ресурсов</h6>
+					<img src="./images/6stages.png" style="width: 864px; height: 535px; border-radius: 5px;" />
+
+					<aside class="notes">
+						Браузер будет последовательно обрабатывать полученный html и каждый ресурс. 
+						CSS считается «блокирующим обработку ресурсом». Это значит, что Render-дерево 
+						не может быть построено без полного первоначального разбора CSS.
+						CSS также может являться «блокирующим скрипты», потому что JavaScript-файлы должны дождаться построения CSSOM, 
+						прежде чем начать исполняться. <br>
+						JavaScript является блокирующим ресурсом для парсера.
+						Когда парсер доходит до тега script, он останавливает чтение документа и запускает скрипт. Вот почему, если мы имеем JavaScript-файл, 
+						который ссылается на элементы документа, мы обязательно должны поместить его после их появления.
+						Для оптимизации загрузки CSS, JS может быть загружен как синхронно, блокируя дальнейшую обработку DOM, так и асинхронно.				
+					</aside>
+				</section>
+
+				<section data-transition="slide" data-background="#457b9d" data-background-transition="zoom">
+					<h6>Создание Render tree</h6>
+					<img src="./images/rendertree.png" style="width: 864px; height: 535px; border-radius: 5px;" />
+
+					<aside class="notes">
+						Последний шаг на этапе от формирования деревьев к рендеру. На этом этапе мы формируем дерево, 
+						которое будет рендериться. В нашем примере левая часть дерева, которая включает head, 
+						рендериться не будет. Так что эту часть можно опустить.
+					</aside>
+				</section>
+
+				<section data-transition="slide" data-background="#1d3557" data-background-transition="zoom">
+					<h6>Компоновка объектов (viewport → layout) и отрисовка (paint)</h6>
+					<img src="./images/paint.png" style="width: 864px; height: 205px; border-radius: 5px;" />
+
+					<aside class="notes">
+						Наконец, на шаге отрисовки, видимый контент страницы может быть преобразован в пиксели, 
+						чтобы появиться на экране. Время, которое займет этот этап, зависит как от величины DOM, 
+						так и от того, какие стили применяются. Некоторые стили требуют больше усилий, 
+						чтобы быть применёнными, чем другие. Например, сложное градиентное фоновое изображение потребует больше времени, 
+						чем простой сплошной цвет на фоне.
+					</aside>
+				</section>
+
+				<section data-background="./images/letscode.gif">
+					<h1>Thaks!</h1>
+					<aside class="notes">
+						some text for intent listeners
+					</aside>
+				</section>
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+		<script>
+			// More info about initialization & config:
+			// - https://revealjs.com/initialization/
+			// - https://revealjs.com/config/
+			Reveal.initialize({
+				hash: true,
+
+				// Learn about plugins: https://revealjs.com/plugins/
+				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+			});
+		</script>
+	</body>
+</html>
